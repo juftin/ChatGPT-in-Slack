@@ -1,9 +1,9 @@
-from typing import Optional
+from typing import Any, Dict, Optional
 
 import openai
 from slack_bolt import BoltContext
 
-from .openai_constants import GPT_3_5_TURBO_0613_MODEL
+from app.openai_constants import GPT_3_5_TURBO_0613_MODEL
 
 # All the supported languages for Slack app as of March 2023
 _locale_to_lang = {
@@ -29,7 +29,7 @@ def from_locale_to_lang(locale: Optional[str]) -> Optional[str]:
     return _locale_to_lang.get(locale)
 
 
-_translation_result_cache = {}
+_translation_result_cache: Dict[str, Any] = {}
 
 
 def translate(*, openai_api_key: Optional[str], context: BoltContext, text: str) -> str:

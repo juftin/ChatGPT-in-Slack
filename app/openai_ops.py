@@ -1,33 +1,32 @@
+import json
 import logging
+import re
 import threading
 import time
-import re
-import json
-from typing import List, Dict, Any, Generator, Tuple, Optional, Union
 from importlib import import_module
+from typing import Any, Dict, Generator, List, Optional, Tuple, Union
 
 import openai
+import tiktoken
 from openai.error import Timeout
 from openai.openai_object import OpenAIObject
-import tiktoken
-
 from slack_bolt import BoltContext
 from slack_sdk.web import WebClient
 
-from app.markdown import slack_to_markdown, markdown_to_slack
+from app.markdown import markdown_to_slack, slack_to_markdown
 from app.openai_constants import (
-    MAX_TOKENS,
-    GPT_3_5_TURBO_MODEL,
     GPT_3_5_TURBO_0301_MODEL,
     GPT_3_5_TURBO_0613_MODEL,
-    GPT_3_5_TURBO_16K_MODEL,
     GPT_3_5_TURBO_16K_0613_MODEL,
-    GPT_4_MODEL,
+    GPT_3_5_TURBO_16K_MODEL,
+    GPT_3_5_TURBO_MODEL,
     GPT_4_0314_MODEL,
     GPT_4_0613_MODEL,
-    GPT_4_32K_MODEL,
     GPT_4_32K_0314_MODEL,
     GPT_4_32K_0613_MODEL,
+    GPT_4_32K_MODEL,
+    GPT_4_MODEL,
+    MAX_TOKENS,
 )
 from app.slack_ops import update_wip_message
 
@@ -60,7 +59,7 @@ def messages_within_context_window(
 ) -> Tuple[List[Dict[str, Union[str, Dict[str, str]]]], int, int]:
     # Remove old messages to make sure we have room for max_tokens
     # See also: https://platform.openai.com/docs/guides/chat/introduction
-    # > total tokens must be below the model’s maximum limit (e.g., 4096 tokens for gpt-3.5-turbo-0301)
+    # > total tokens must be below the model's maximum limit (e.g., 4096 tokens for gpt-3.5-turbo-0301)
     max_context_tokens = context_length(context.get("OPENAI_MODEL")) - MAX_TOKENS - 1
     if context.get("OPENAI_FUNCTION_CALL_MODULE_NAME") is not None:
         max_context_tokens -= calculate_tokens_necessary_for_function_call(context)
@@ -156,7 +155,7 @@ def consume_openai_stream_to_write_reply(
     wip_reply: dict,
     context: BoltContext,
     user_id: str,
-    messages: List[Dict[str, Union[str, Dict[str, str]]]],
+    messages: List[Dict[str, Any]],
     stream: Generator[OpenAIObject, Any, None],
     timeout_seconds: int,
     translate_markdown: bool,
@@ -186,7 +185,7 @@ def consume_openai_stream_to_write_reply(
             if delta.get("content") is not None:
                 word_count += 1
                 assistant_reply["content"] += delta.get("content")
-                if word_count >= 20:
+                if word_count >= 20:  # noqa: PLR2004
 
                     def update_message():
                         assistant_reply_text = format_assistant_reply(
@@ -218,7 +217,7 @@ def consume_openai_stream_to_write_reply(
             try:
                 if t.is_alive():
                     t.join()
-            except Exception:
+            except Exception:  # noqa: S110
                 pass
 
         if function_call["name"] != "":
@@ -275,11 +274,11 @@ def consume_openai_stream_to_write_reply(
             try:
                 if t.is_alive():
                     t.join()
-            except Exception:
+            except Exception:  # noqa: S110
                 pass
         try:
             stream.close()
-        except Exception:
+        except Exception:  # noqa: S110
             pass
 
 
@@ -287,24 +286,24 @@ def context_length(
     model: str,
 ) -> int:
     if model == GPT_3_5_TURBO_MODEL:
-        # Note that GPT_3_5_TURBO_MODEL may change over time. Return context length assuming GPT_3_5_TURBO_0613_MODEL.
+        # GPT_3_5_TURBO_MODEL may change over time. Return context length assuming GPT_3_5_TURBO_0613_MODEL.
         return context_length(model=GPT_3_5_TURBO_0613_MODEL)
     if model == GPT_3_5_TURBO_16K_MODEL:
-        # Note that GPT_3_5_TURBO_16K_MODEL may change over time. Return context length assuming GPT_3_5_TURBO_16K_0613_MODEL.
+        # GPT_3_5_TURBO_16K_MODEL may change over time. Return context length assuming GPT_3_5_TURBO_16K_0613_MODEL.
         return context_length(model=GPT_3_5_TURBO_16K_0613_MODEL)
     elif model == GPT_4_MODEL:
-        # Note that GPT_4_MODEL may change over time. Return context length assuming GPT_4_0613_MODEL.
+        # GPT_4_MODEL may change over time. Return context length assuming GPT_4_0613_MODEL.
         return context_length(model=GPT_4_0613_MODEL)
     elif model == GPT_4_32K_MODEL:
-        # Note that GPT_4_32K_MODEL may change over time. Return context length assuming GPT_4_32K_0613_MODEL.
+        # GPT_4_32K_MODEL may change over time. Return context length assuming GPT_4_32K_0613_MODEL.
         return context_length(model=GPT_4_32K_0613_MODEL)
-    elif model == GPT_3_5_TURBO_0301_MODEL or model == GPT_3_5_TURBO_0613_MODEL:
+    elif model in {GPT_3_5_TURBO_0301_MODEL, GPT_3_5_TURBO_0613_MODEL}:
         return 4096
     elif model == GPT_3_5_TURBO_16K_0613_MODEL:
         return 16384
-    elif model == GPT_4_0314_MODEL or model == GPT_4_0613_MODEL:
+    elif model in (GPT_4_0314_MODEL, GPT_4_0613_MODEL):
         return 8192
-    elif model == GPT_4_32K_0314_MODEL or model == GPT_4_32K_0613_MODEL:
+    elif model in (GPT_4_32K_0314_MODEL, GPT_4_32K_0613_MODEL):
         return 32768
     else:
         error = f"Calculating the length of the context window for model {model} is not yet supported."
@@ -431,7 +430,7 @@ def calculate_tokens_necessary_for_function_call(context: BoltContext) -> int:
     if function_call_module_name is None:
         return 0
 
-    global _prompt_tokens_used_by_function_call_cache
+    global _prompt_tokens_used_by_function_call_cache  # noqa: PLW0603
     if _prompt_tokens_used_by_function_call_cache is not None:
         return _prompt_tokens_used_by_function_call_cache
 

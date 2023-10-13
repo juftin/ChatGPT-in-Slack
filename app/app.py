@@ -31,6 +31,7 @@ app.client.retry_handlers.append(RateLimitErrorRetryHandler(max_retry_count=2))
 
 register_listeners(app)
 
+
 @app.event("app_home_opened")
 def render_home_tab(client: WebClient, context: BoltContext):
     already_set_api_key = os.environ["OPENAI_API_KEY"]
@@ -42,6 +43,7 @@ def render_home_tab(client: WebClient, context: BoltContext):
             single_workspace_mode=True,
         ),
     )
+
 
 if USE_SLACK_LANGUAGE is True:
 
@@ -55,6 +57,7 @@ if USE_SLACK_LANGUAGE is True:
         user_info = client.users_info(user=user_id, include_locale=True)
         context["locale"] = user_info.get("user", {}).get("locale")
         next_()
+
 
 @app.middleware
 def set_openai_api_key(context: BoltContext, next_):

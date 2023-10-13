@@ -4,7 +4,7 @@ import re
 import time
 
 from openai.error import Timeout
-from slack_bolt import App, Ack, BoltContext, BoltResponse
+from slack_bolt import Ack, App, BoltContext, BoltResponse
 from slack_bolt.request.payload_utils import is_event
 from slack_sdk.errors import SlackApiError
 from slack_sdk.web import WebClient
@@ -16,24 +16,23 @@ from app.env import (
 )
 from app.i18n import translate
 from app.openai_ops import (
-    start_receiving_openai_response,
-    format_openai_message_content,
-    consume_openai_stream_to_write_reply,
     build_system_text,
-    messages_within_context_window,
-    generate_slack_thread_summary,
-    generate_proofreading_result,
+    consume_openai_stream_to_write_reply,
+    format_openai_message_content,
     generate_chatgpt_response,
+    generate_proofreading_result,
+    generate_slack_thread_summary,
+    messages_within_context_window,
+    start_receiving_openai_response,
 )
 from app.slack_ops import (
+    build_thread_replies_as_combined_text,
+    extract_state_value,
     find_parent_message,
     is_no_mention_thread,
     post_wip_message,
     update_wip_message,
-    extract_state_value,
-    build_thread_replies_as_combined_text,
 )
-
 from app.utils import redact_string
 
 #
@@ -150,7 +149,10 @@ def respond_to_app_mention(
                 client=client,
                 channel=context.channel_id,
                 ts=wip_reply["message"]["ts"],
-                text=f":warning: The previous message is too long ({num_context_tokens}/{max_context_tokens} prompt tokens).",
+                text=(
+                    ":warning: The previous message is too long "
+                    f"({num_context_tokens}/{max_context_tokens} prompt tokens)."
+                ),
                 messages=messages,
                 user=context.user_id,
             )
@@ -255,7 +257,7 @@ def respond_to_new_message(
             # Remove old messages
             for message in past_messages:
                 seconds = time.time() - float(message.get("ts"))
-                if seconds < 86400:  # less than 1 day
+                if seconds < 86400:  # less than 1 day # noqa: PLR2004
                     messages_in_context.append(message)
             is_no_mention_required = True
         else:
@@ -368,7 +370,10 @@ def respond_to_new_message(
                 client=client,
                 channel=context.channel_id,
                 ts=wip_reply["message"]["ts"],
-                text=f":warning: The previous message is too long ({num_context_tokens}/{max_context_tokens} prompt tokens).",
+                text=(
+                    ":warning: The previous message is too long "
+                    f"({num_context_tokens}/{max_context_tokens} prompt tokens)."
+                ),
                 messages=messages,
                 user=context.user_id,
             )
@@ -533,7 +538,10 @@ def show_summarize_option_modal(
                 "elements": [
                     {
                         "type": "mrkdwn",
-                        "text": "Note that after the instruction you provide, this app will append all the replies in the thread.",
+                        "text": (
+                            "Note that after the instruction you provide, "
+                            "this app will append all the replies in the thread."
+                        ),
                     }
                 ],
             },
@@ -784,7 +792,7 @@ def ack_proofreading_modal_submission(
     context: BoltContext,
 ):
     original_text = extract_state_value(payload, "original_text").get("value")
-    text = "\n".join(map(lambda s: f">{s}", original_text.split("\n")))
+    text = "\n".join(f">{s}" for s in original_text.split("\n"))
     ack(
         response_action="update",
         view={
@@ -824,7 +832,7 @@ def display_proofreading_result(
     try:
         openai_api_key = context.get("OPENAI_API_KEY")
         original_text = extract_state_value(payload, "original_text").get("value")
-        text = "\n".join(map(lambda s: f">{s}", original_text.split("\n")))
+        text = "\n".join(f">{s}" for s in original_text.split("\n"))
         result = generate_proofreading_result(
             context=context,
             logger=logger,
@@ -946,8 +954,7 @@ def send_proofreading_result_in_dm(
                 text=":wave: Here is the proofreading result:\n" + result,
             )
             # Remove the last block that displays the button
-            view_blocks.pop((len(view_blocks) - 1))
-            print(view_blocks)
+            view_blocks.pop(len(view_blocks) - 1)
             client.views_update(
                 view_id=body["view"]["id"],
                 view={
@@ -999,7 +1006,7 @@ def ack_chat_from_scratch_modal_submission(
     payload: dict,
 ):
     prompt = extract_state_value(payload, "prompt").get("value")
-    text = "\n".join(map(lambda s: f">{s}", prompt.split("\n")))
+    text = "\n".join(f">{s}" for s in prompt.split("\n"))
     ack(
         response_action="update",
         view={
@@ -1029,7 +1036,7 @@ def display_chat_from_scratch_result(
     openai_api_key = context.get("OPENAI_API_KEY")
     try:
         prompt = extract_state_value(payload, "prompt").get("value")
-        text = "\n".join(map(lambda s: f">{s}", prompt.split("\n")))
+        text = "\n".join(f">{s}" for s in prompt.split("\n"))
         result = generate_chatgpt_response(
             context=context,
             logger=logger,
