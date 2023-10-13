@@ -1,0 +1,13 @@
+services:
+  chatgpt-in-slack:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    environment:
+      SLACK_BOT_TOKEN: ${SLACK_BOT_TOKEN}
+      SLACK_APP_TOKEN: ${SLACK_APP_TOKEN}
+      OPENAI_API_KEY: ${OPENAI_API_KEY}
+      OPENAI_MODEL: ${OPENAI_MODEL:-gpt-3.5-turbo}
+      TRANSLATE_MARKDOWN: ${TRANSLATE_MARKDOWN:-true}
+      SLACK_APP_LOG_LEVEL: ${SLACK_APP_LOG_LEVEL:-DEBUG}
+    restart: unless-stopped
