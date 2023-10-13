@@ -18,7 +18,7 @@ def slack_to_markdown(content: str) -> str:
                 (r"_(?!\s)([^_\n]+?)(?<!\s)_", r"*\1*"),  # _italic_ to *italic*
                 (r"~(?!\s)([^~\n]+?)(?<!\s)~", r"~~\1~~"),  # ~strike~ to ~~strike~~
             ]:
-                part = re.sub(o, n, part)
+                part = re.sub(o, n, part)  # noqa: PLW2901
             result += part
     return result
 
@@ -48,6 +48,6 @@ def markdown_to_slack(content: str) -> str:
                 (r"__(?!\s)([^_\n]+?)(?<!\s)__", r"*\1*"),  # __bold__ to *bold*
                 (r"~~(?!\s)([^~\n]+?)(?<!\s)~~", r"~\1~"),  # ~~strike~~ to ~strike~
             ]:
-                part = re.sub(o, n, part)
+                part = re.sub(o, n, part)  # noqa: PLW2901
             result += part
     return result
