@@ -1,6 +1,7 @@
 # Unzip the dependencies managed by serverless-python-requirements
+
 try:
-    import unzip_requirements  # type:ignore
+    import unzip_requirements  # noqa: F401
 except ImportError:
     pass
 
@@ -11,30 +12,33 @@ except ImportError:
 import json
 import logging
 import os
-import openai
 
-from slack_sdk.web import WebClient
+import boto3
+import openai
+from slack_bolt import Ack, App, BoltContext
+from slack_bolt.adapter.aws_lambda import SlackRequestHandler
+from slack_bolt.adapter.aws_lambda.lambda_s3_oauth_flow import LambdaS3OAuthFlow
 from slack_sdk.errors import SlackApiError
 from slack_sdk.http_retry.builtin_handlers import RateLimitErrorRetryHandler
-from slack_bolt import App, Ack, BoltContext
+from slack_sdk.web import WebClient
 
-from app.bolt_listeners import register_listeners, before_authorize
+from app.bolt_listeners import before_authorize, register_listeners
 from app.env import (
-    USE_SLACK_LANGUAGE,
-    SLACK_APP_LOG_LEVEL,
-    OPENAI_MODEL,
-    OPENAI_TEMPERATURE,
-    OPENAI_API_TYPE,
     OPENAI_API_BASE,
+    OPENAI_API_TYPE,
     OPENAI_API_VERSION,
     OPENAI_DEPLOYMENT_ID,
     OPENAI_FUNCTION_CALL_MODULE_NAME,
-)
-from app.slack_ops import (
-    build_home_tab,
-    DEFAULT_HOME_TAB_MESSAGE,
+    OPENAI_MODEL,
+    OPENAI_TEMPERATURE,
+    SLACK_APP_LOG_LEVEL,
+    USE_SLACK_LANGUAGE,
 )
 from app.i18n import translate
+from app.slack_ops import (
+    DEFAULT_HOME_TAB_MESSAGE,
+    build_home_tab,
+)
 
 #
 # Product deployment (AWS Lambda)
@@ -42,7 +46,8 @@ from app.i18n import translate
 # export SLACK_CLIENT_ID=
 # export SLACK_CLIENT_SECRET=
 # export SLACK_SIGNING_SECRET=
-# export SLACK_SCOPES=app_mentions:read,channels:history,groups:history,im:history,mpim:history,chat:write.public,chat:write,users:read
+# export SLACK_SCOPES=\
+# app_mentions:read,channels:history,groups:history,im:history,mpim:history,chat:write.public,chat:write,users:read
 # export SLACK_INSTALLATION_S3_BUCKET_NAME=
 # export SLACK_STATE_S3_BUCKET_NAME=
 # export OPENAI_S3_BUCKET_NAME=
@@ -50,10 +55,6 @@ from app.i18n import translate
 # serverless plugin install -n serverless-python-requirements
 # serverless deploy
 #
-
-import boto3
-from slack_bolt.adapter.aws_lambda import SlackRequestHandler
-from slack_bolt.adapter.aws_lambda.lambda_s3_oauth_flow import LambdaS3OAuthFlow
 
 SlackRequestHandler.clear_all_log_handlers()
 logging.basicConfig(format="%(asctime)s %(message)s", level=SLACK_APP_LOG_LEVEL)
@@ -179,7 +180,7 @@ def handler(event, context_):
         try:
             s3_client.get_object(Bucket=openai_bucket_name, Key=context.team_id)
             message = "This app is ready to use in this workspace :raised_hands:"
-        except:  # noqa: E722
+        except:  # noqa: E722, S110
             pass
         openai_api_key = context.get("OPENAI_API_KEY")
         client.views_publish(

@@ -1,12 +1,10 @@
-from typing import Optional
-from typing import List, Dict
+from typing import Dict, List, Optional
 
-from slack_sdk.web import WebClient, SlackResponse
 from slack_bolt import BoltContext
+from slack_sdk.web import SlackResponse, WebClient
 
 from app.i18n import translate
 from app.markdown import slack_to_markdown
-
 
 # ----------------------------
 # General operations in a channel
@@ -136,16 +134,14 @@ def build_home_tab(
             "* Configuration",
         ]
     )
-    translated_sentences = list(
-        map(
-            lambda s: s.replace("* ", ""),
-            translate(
-                openai_api_key=openai_api_key,
-                context=context,
-                text=original_sentences,
-            ).split("\n"),
-        )
-    )
+    translated_sentences = [
+        s.replace("* ", "")
+        for s in translate(
+            openai_api_key=openai_api_key,
+            context=context,
+            text=original_sentences,
+        ).split("\n")
+    ]
     message = translated_sentences[0]
     configure_label = translated_sentences[1]
     proofreading = translated_sentences[2]

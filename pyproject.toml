@@ -46,7 +46,7 @@ Issues = "https://juftin.github.io/ChatGPT-in-Slack/issues"
 Source = "https://github.com/juftin/ChatGPT-in-Slack"
 
 [tool.black]
-line-length = 125
+line-length = 88
 skip-string-normalization = true
 target-version = ["py38"]
 
@@ -134,6 +134,8 @@ module = [
 ignore = [
     # Allow non-abstract empty methods in abstract base classes
     "B027",
+    # Boolean-typed positional argument in function definition
+    "FBT001",
     # Allow boolean positional values in function calls, like `dict.get(... True)`
     "FBT003",
     # Ignore checks for possible passwords
