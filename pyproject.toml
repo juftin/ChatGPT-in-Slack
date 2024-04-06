@@ -69,6 +69,9 @@ omit = [
 parallel = true
 source_pkgs = ["app", "tests"]
 
+[tool.hatch.build.targets.wheel]
+packages = ["app"]
+
 [[tool.hatch.envs.all.matrix]]
 python = ["3.8", "3.9", "3.10", "3.11", "3.12"]
 
